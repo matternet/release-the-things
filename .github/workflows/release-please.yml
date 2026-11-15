@@ -1,0 +1,31 @@
+# Flavour 1: commit messages + release PR (release-please).
+# Only commits touching release-please-demo/ count toward its version.
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      # App token so CI runs on the release PR and tags can trigger builds.
+      - name: Get release-bot token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+
+      # Opens/updates the release PR; when that PR is merged, tags
+      # release-please-demo-vX.Y.Z and creates the GitHub release.
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
