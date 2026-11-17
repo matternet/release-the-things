@@ -19,7 +19,8 @@ permissions:
 jobs:
   release-pr:
     # Skip the push that *is* the release merge.
-    if: "${{ !startsWith(github.event.head_commit.message, 'release(changie-demo): v') }}"
+    # Squash merges start with "release(changie-demo): v"; merge commits mention the branch.
+    if: "${{ !startsWith(github.event.head_commit.message, 'release(changie-demo): v') && !contains(github.event.head_commit.message, 'release/changie-demo') }}"
     runs-on: ubuntu-latest
     defaults:
       run:

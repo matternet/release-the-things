@@ -1,0 +1,17 @@
+# cocogitto (cog) config: used here only for commit-message linting.
+# Releases are handled by release-please and changie, not by cog.
+#
+# Local hook (optional):
+#   brew install cocogitto      # or: cargo binstall cocogitto
+#   cog install-hook commit-msg
+ignore_merge_commits = true
+
+[git_hooks.commit-msg]
+script = """#!/bin/sh
+set -e
+# Only release-please-demo/ is versioned from commit messages,
+# so only commits touching it must be Conventional Commits.
+if git diff --cached --name-only | grep -q '^release-please-demo/'; then
+  cog verify --file "$1"
+fi
+"""
