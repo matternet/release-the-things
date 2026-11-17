@@ -9,9 +9,11 @@ ignore_merge_commits = true
 [git_hooks.commit-msg]
 script = """#!/bin/sh
 set -e
-# Only release-please-demo/ is versioned from commit messages,
-# so only commits touching it must be Conventional Commits.
+# Commits touching release-please-demo/ must be Conventional Commits scoped to it.
+# (CI also checks knope-demo/ scopes; see .github/workflows/lint.yml.)
 if git diff --cached --name-only | grep -q '^release-please-demo/'; then
   cog verify --file "$1"
+  head -1 "$1" | grep -qE '^[a-z]+\(release-please-demo\)!?: ' || {
+    echo "Add the folder as scope, e.g. feat(release-please-demo): add parachute"; exit 1; }
 fi
 """
