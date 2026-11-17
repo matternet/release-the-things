@@ -1,6 +1,11 @@
-# Lint demo: two single-binary-friendly checks, each scoped to its own flavour.
-#  - release-please-demo/: every commit touching it must be a Conventional Commit (checked by cog)
-#  - knope-demo/: the PR must add a Markdown change file (or carry the skip-changelog label)
+# Lint demo. Rules:
+#  1. A Conventional Commit must name its folder as scope:
+#     feat(release-please-demo): ...  /  fix(knope-demo): ...
+#     (knope counts unscoped commits for every package, so scopes keep the demos apart)
+#  2. Commits touching release-please-demo/ must be Conventional Commits (checked by cog).
+#  3. PRs touching knope-demo/ need a release note: a .changeset/*.md file OR a
+#     feat/fix commit scoped to knope-demo. Escape hatch: the skip-changelog label.
+# We keep merge commits, so every commit lands on main and every commit is checked.
 name: lint
 
 on:
@@ -12,30 +17,11 @@ permissions:
   pull-requests: read
 
 jobs:
-  scope:
-    runs-on: ubuntu-latest
-    outputs:
-      rp: ${{ steps.files.outputs.rp }}
-      knope: ${{ steps.files.outputs.knope }}
-      knope_file: ${{ steps.files.outputs.knope_file }}
-    steps:
-      - name: Which demo folders does this PR touch?
-        id: files
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR: ${{ github.event.pull_request.number }}
-        run: |
-          files="$(gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" --name-only)"
-          has() { echo "$files" | grep -qE "$1" && echo true || echo false; }
-          echo "rp=$(has '^release-please-demo/')" >> "$GITHUB_OUTPUT"
-          echo "knope=$(has '^knope-demo/')" >> "$GITHUB_OUTPUT"
-          echo "knope_file=$(echo "$files" | grep -E '^knope-demo/\.changeset/.+\.md$' | grep -qv '/README\.md$' && echo true || echo false)" >> "$GITHUB_OUTPUT"
-
-  # We keep merge commits, so every commit lands on main: lint each one
-  # in this PR that touches release-please-demo/.
   commits:
-    needs: scope
-    if: needs.scope.outputs.rp == 'true'
+    # Release PRs are written by the bots; skip them.
+    if: >-
+      !startsWith(github.event.pull_request.head.ref, 'release-please--') &&
+      github.event.pull_request.head.ref != 'release/knope-demo'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,33 +32,61 @@ jobs:
       - uses: cargo-bins/cargo-binstall@main
       - name: Install cocogitto
         run: cargo binstall -y cocogitto
-      - name: cog verify every commit in this PR
+      - name: Check every commit in this PR
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
           fail=0
-          for sha in $(git rev-list --no-merges "$BASE..$HEAD" -- release-please-demo/); do
-            echo "== $(git log -1 --format='%h %s' "$sha")"
-            if ! git log -1 --format=%B "$sha" | cog verify --file -; then
-              echo "::error::$(git log -1 --format=%h "$sha") is not a Conventional Commit: $(git log -1 --format=%s "$sha")"
-              fail=1
+          err() { echo "::error::$1"; fail=1; }
+          for sha in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            subject="$(git log -1 --format=%s "$sha")"
+            short="$(git log -1 --format=%h "$sha")"
+            files="$(git diff-tree --no-commit-id --name-only -r "$sha")"
+            echo "== $short $subject"
+            scope="$(echo "$subject" | sed -nE 's/^[a-z]+\(([^)]*)\)!?: .*/\1/p')"
+            if git log -1 --format=%B "$sha" | cog verify --file - >/dev/null 2>&1; then
+              conventional=yes
+            else
+              conventional=no
+            fi
+            if echo "$files" | grep -q '^release-please-demo/'; then
+              [ "$conventional" = yes ] || err "$short is not a Conventional Commit: $subject"
+              [ "$conventional" = no ] || [ "$scope" = release-please-demo ] || err "$short needs scope (release-please-demo): $subject"
+            fi
+            if echo "$files" | grep -q '^knope-demo/' && [ "$conventional" = yes ] && [ "$scope" != knope-demo ]; then
+              err "$short touches knope-demo/; use scope (knope-demo): $subject"
+            fi
+            if [ "$conventional" = yes ] && [ -z "$scope" ]; then
+              err "$short has no scope; knope would count it for every package: $subject"
             fi
           done
           exit $fail
 
-  change-file:
-    needs: scope
+  knope-release-note:
     if: >-
-      needs.scope.outputs.knope == 'true' &&
       github.event.pull_request.head.ref != 'release/knope-demo' &&
       !contains(github.event.pull_request.labels.*.name, 'skip-changelog')
     runs-on: ubuntu-latest
     steps:
-      - name: Did this PR add a change file?
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Change file or scoped commit?
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
-          if [ "${{ needs.scope.outputs.knope_file }}" != "true" ]; then
-            echo "::error::knope-demo/ changed but no change file was added. Add a .md file to knope-demo/.changeset/ (or run 'knope document-change'), or add the skip-changelog label."
-            exit 1
+          files="$(git diff --name-only "$BASE...$HEAD")"
+          if ! echo "$files" | grep -q '^knope-demo/'; then
+            echo "PR doesn't touch knope-demo/. Nothing to check."; exit 0
           fi
-          echo "Change file found."
+          if echo "$files" | grep -E '^knope-demo/\.changeset/.+\.md$' | grep -qv '/README\.md$'; then
+            echo "Change file found."; exit 0
+          fi
+          if git log --no-merges --format=%s "$BASE..$HEAD" | grep -qE '^(feat|fix)\(knope-demo\)!?: |^[a-z]+\(knope-demo\)!: '; then
+            echo "Scoped commit found."; exit 0
+          fi
+          echo "::error::knope-demo/ changed without a release note. Add .changeset/*.md (or run 'knope document-change'), or commit as fix(knope-demo): / feat(knope-demo):, or add the skip-changelog label."
+          exit 1

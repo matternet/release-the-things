@@ -1,15 +1,15 @@
 # knope config for the knope-demo flavour (run knope from inside knope-demo/).
-# Change files: knope-demo/.changeset/*.md (Markdown with a tiny front-matter header).
-
-# Version only from change files; release-please-demo's commits must not count here.
-[changes]
-ignore_conventional_commits = true
+# Two ways to describe a change, both feed the version bump and the changelog:
+#  - Markdown change files: knope-demo/.changeset/*.md
+#  - Conventional Commits scoped to this folder: fix(knope-demo): ..., feat(knope-demo): ...
+# Unscoped commits would count for every package, so the lint requires a scope.
 
 [packages.knope-demo]
 versioned_files = [
   { path = "include/version.h", regex = 'FIRMWARE_VERSION "(?<version>\d+\.\d+\.\d+)"' },
 ]
 changelog = "CHANGELOG.md"
+scopes = ["knope-demo"]
 
 [github]
 owner = "matternet"
@@ -28,7 +28,7 @@ type = "PrepareRelease"
 
 [[workflows.steps]]
 type = "Command"
-command = "git commit -m \"release(knope-demo): $version\" && git push --force --set-upstream origin release/knope-demo"
+command = "git commit -m \"chore(knope-demo): release $version\" && git push --force --set-upstream origin release/knope-demo"
 shell = true
 
 [workflows.steps.variables]
@@ -39,7 +39,7 @@ type = "CreatePullRequest"
 base = "main"
 
 [workflows.steps.title]
-template = "release(knope-demo): $version"
+template = "chore(knope-demo): release $version"
 variables = { "$version" = "Version" }
 
 [workflows.steps.body]
