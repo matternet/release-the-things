@@ -1,5 +1,5 @@
 # cocogitto (cog) config: used here only for commit-message linting.
-# Releases are handled by release-please and changie, not by cog.
+# Releases are handled by release-please and knope, not by cog.
 #
 # Local hook (optional):
 #   brew install cocogitto      # or: cargo binstall cocogitto

@@ -1,0 +1,61 @@
+# knope config for the knope-demo flavour (run knope from inside knope-demo/).
+# Change files: knope-demo/.changeset/*.md (Markdown with a tiny front-matter header).
+
+# Version only from change files; release-please-demo's commits must not count here.
+[changes]
+ignore_conventional_commits = true
+
+[packages.knope-demo]
+versioned_files = [
+  { path = "include/version.h", regex = 'FIRMWARE_VERSION "(?<version>\d+\.\d+\.\d+)"' },
+]
+changelog = "CHANGELOG.md"
+
+[github]
+owner = "matternet"
+repo = "release-the-things"
+
+# Workflow A: build the release on a branch and open/update the release PR.
+[[workflows]]
+name = "prepare-release"
+
+[[workflows.steps]]
+type = "Command"
+command = "git switch -c release/knope-demo"
+
+[[workflows.steps]]
+type = "PrepareRelease"
+
+[[workflows.steps]]
+type = "Command"
+command = "git commit -m \"release(knope-demo): $version\" && git push --force --set-upstream origin release/knope-demo"
+shell = true
+
+[workflows.steps.variables]
+"$version" = "Version"
+
+[[workflows.steps]]
+type = "CreatePullRequest"
+base = "main"
+
+[workflows.steps.title]
+template = "release(knope-demo): $version"
+variables = { "$version" = "Version" }
+
+[workflows.steps.body]
+template = "Merging this PR ships knope-demo $version.\n\n$changelog"
+variables = { "$version" = "Version", "$changelog" = "ChangelogEntry" }
+
+# Workflow B: after the release PR is merged, tag knope-demo/vX.Y.Z and publish a GitHub release.
+[[workflows]]
+name = "release"
+
+[[workflows.steps]]
+type = "Release"
+
+# Local helper: `knope document-change` asks a few questions and writes a change file.
+[[workflows]]
+name = "document-change"
+
+[[workflows.steps]]
+type = "CreateChangeFile"

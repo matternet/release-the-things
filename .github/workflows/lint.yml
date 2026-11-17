@@ -1,6 +1,6 @@
 # Lint demo: two single-binary-friendly checks, each scoped to its own flavour.
 #  - release-please-demo/: every commit touching it must be a Conventional Commit (checked by cog)
-#  - changie-demo/: the PR must add a change file (or carry the skip-changelog label)
+#  - knope-demo/: the PR must add a Markdown change file (or carry the skip-changelog label)
 name: lint
 
 on:
@@ -16,8 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       rp: ${{ steps.files.outputs.rp }}
-      changie: ${{ steps.files.outputs.changie }}
-      changie_file: ${{ steps.files.outputs.changie_file }}
+      knope: ${{ steps.files.outputs.knope }}
+      knope_file: ${{ steps.files.outputs.knope_file }}
     steps:
       - name: Which demo folders does this PR touch?
         id: files
@@ -28,8 +28,8 @@ jobs:
           files="$(gh pr diff "$PR" --repo "$GITHUB_REPOSITORY" --name-only)"
           has() { echo "$files" | grep -qE "$1" && echo true || echo false; }
           echo "rp=$(has '^release-please-demo/')" >> "$GITHUB_OUTPUT"
-          echo "changie=$(has '^changie-demo/')" >> "$GITHUB_OUTPUT"
-          echo "changie_file=$(has '^changie-demo/\.changes/unreleased/.+\.yaml$')" >> "$GITHUB_OUTPUT"
+          echo "knope=$(has '^knope-demo/')" >> "$GITHUB_OUTPUT"
+          echo "knope_file=$(echo "$files" | grep -E '^knope-demo/\.changeset/.+\.md$' | grep -qv '/README\.md$' && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
   # We keep merge commits, so every commit lands on main: lint each one
   # in this PR that touches release-please-demo/.
@@ -64,15 +64,15 @@ jobs:
   change-file:
     needs: scope
     if: >-
-      needs.scope.outputs.changie == 'true' &&
-      github.event.pull_request.head.ref != 'release/changie-demo' &&
+      needs.scope.outputs.knope == 'true' &&
+      github.event.pull_request.head.ref != 'release/knope-demo' &&
       !contains(github.event.pull_request.labels.*.name, 'skip-changelog')
     runs-on: ubuntu-latest
     steps:
       - name: Did this PR add a change file?
         run: |
-          if [ "${{ needs.scope.outputs.changie_file }}" != "true" ]; then
-            echo "::error::changie-demo/ changed but no change file was added. Run 'changie new' in changie-demo/ (or add the skip-changelog label)."
+          if [ "${{ needs.scope.outputs.knope_file }}" != "true" ]; then
+            echo "::error::knope-demo/ changed but no change file was added. Add a .md file to knope-demo/.changeset/ (or run 'knope document-change'), or add the skip-changelog label."
             exit 1
           fi
           echo "Change file found."
