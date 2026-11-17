@@ -1,0 +1,65 @@
+# Flavour 2, part A: Markdown change files + release PR (knope).
+# Runs knope's prepare-release workflow, which opens/updates the
+# "release(knope-demo): vX.Y.Z" PR using knope's built-in CreatePullRequest step.
+name: knope release PR
+
+on:
+  push:
+    branches: [main]
+    paths: ["knope-demo/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: knope-release-pr
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-pr:
+    # Skip the push that is the release merge (squash or merge commit).
+    if: "${{ !startsWith(github.event.head_commit.message, 'release(knope-demo):') && !contains(github.event.head_commit.message, 'release/knope-demo') }}"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: knope-demo
+    steps:
+      - name: Get release-bot token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+
+      - name: Any change files?
+        id: check
+        run: |
+          if ls .changeset/*.md 2>/dev/null | grep -qv '/README.md$'; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "Nothing to release."
+          fi
+
+      # Prebuilt single binary: no Rust build, no Node.
+      - uses: cargo-bins/cargo-binstall@main
+        if: steps.check.outputs.has_changes == 'true'
+      - name: Install knope
+        if: steps.check.outputs.has_changes == 'true'
+        run: cargo binstall -y knope
+
+      - name: Prepare release and open/update the release PR
+        if: steps.check.outputs.has_changes == 'true'
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          git config user.name "release-bot"
+          git config user.email "release-bot@users.noreply.github.com"
+          knope prepare-release --verbose
