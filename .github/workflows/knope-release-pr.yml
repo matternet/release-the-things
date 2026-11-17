@@ -1,6 +1,6 @@
 # Flavour 2, part A: Markdown change files + release PR (knope).
 # Runs knope's prepare-release workflow, which opens/updates the
-# "release(knope-demo): vX.Y.Z" PR using knope's built-in CreatePullRequest step.
+# "chore(knope-demo): release X.Y.Z" PR using knope's built-in CreatePullRequest step.
 name: knope release PR
 
 on:
@@ -20,7 +20,7 @@ permissions:
 jobs:
   release-pr:
     # Skip the push that is the release merge (squash or merge commit).
-    if: "${{ !startsWith(github.event.head_commit.message, 'release(knope-demo):') && !contains(github.event.head_commit.message, 'release/knope-demo') }}"
+    if: "${{ !startsWith(github.event.head_commit.message, 'chore(knope-demo): release') && !contains(github.event.head_commit.message, 'release/knope-demo') }}"
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -38,10 +38,15 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
 
-      - name: Any change files?
+      # Something to release = a change file, or a feat/fix/breaking commit
+      # scoped to knope-demo since the last knope-demo/v* tag.
+      - name: Anything to release?
         id: check
         run: |
-          if ls .changeset/*.md 2>/dev/null | grep -qv '/README.md$'; then
+          last="$(git describe --tags --match 'knope-demo/v*' --abbrev=0 2>/dev/null || true)"
+          range="${last:+$last..}HEAD"
+          if ls .changeset/*.md 2>/dev/null | grep -qv '/README.md$' \
+             || git log --format=%s "$range" | grep -qE '^(feat|fix)\(knope-demo\)!?: |^[a-z]+\(knope-demo\)!: '; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
