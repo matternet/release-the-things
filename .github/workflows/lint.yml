@@ -37,6 +37,9 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: |
+          # cog verify needs a git identity, even though it creates no commit.
+          git config --global user.name "lint-bot"
+          git config --global user.email "lint-bot@users.noreply.github.com"
           fail=0
           err() { echo "::error::$1"; fail=1; }
           for sha in $(git rev-list --no-merges "$BASE..$HEAD"); do
