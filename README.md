@@ -4,17 +4,19 @@ Two ways to automate firmware releases, side by side in one repo. No Node, no pa
 
 | Folder | How a change is described | When it releases | Tool |
 | --- | --- | --- | --- |
-| `release-please-demo/` | Conventional Commit messages (`feat:`, `fix:`, `feat!:`) | Merge the release PR | release-please (GitHub Action) |
-| `knope-demo/` | A Markdown change file per change (`.changeset/*.md`) | Merge the release PR | knope (single Rust binary) |
+| `release-please-demo/` | Conventional Commits scoped to the folder: `feat(release-please-demo): …` | Merge the release PR | release-please (GitHub Action) |
+| `knope-demo/` | A Markdown change file (`.changeset/*.md`) **and/or** a scoped commit: `fix(knope-demo): …` | Merge the release PR | knope (single Rust binary) |
 
 Each flavour only looks at its own folder, opens its own release PR, writes its own `CHANGELOG.md`, and tags with its own prefix:
 
 - `release-please-demo-vX.Y.Z`
 - `knope-demo/vX.Y.Z`
 
+**The one rule:** a Conventional Commit names its folder as scope. knope counts unscoped commits for every package, so scopes keep the demos apart. The lint enforces it.
+
 ## Try it
 
-**release-please flavour:** change something in `release-please-demo/`, commit it as `feat: add parachute`, and merge the PR. A release PR appears; merge it to tag and release. The version in `release-please-demo/include/version.h` updates on the line marked `x-release-please-version`.
+**release-please flavour:** change something in `release-please-demo/`, commit it as `feat(release-please-demo): add parachute`, and merge the PR. A release PR appears; merge it to tag and release. The version in `release-please-demo/include/version.h` updates on the line marked `x-release-please-version`.
 
 **knope flavour:** change something in `knope-demo/` and add a change file, e.g. `knope-demo/.changeset/add_parachute.md`:
 
@@ -28,7 +30,9 @@ knope-demo: minor
 Deploys automatically below 20 m with motors off. Tested in the sim and on the bench.
 ```
 
-Merge the PR. A `release(knope-demo): X.Y.Z` PR appears (created by knope's `CreatePullRequest` step); merge it to tag and release. The bump comes from the change files (`major` / `minor` / `patch`), and the version in `knope-demo/include/version.h` is updated by a regex in `knope-demo/knope.toml`. Locally, `knope document-change` (inside `knope-demo/`) writes the change file for you.
+Or skip the file and commit as `fix(knope-demo): battery no longer reads 110%`: knope picks up feat/fix commits scoped to `knope-demo` too, and merges both into one changelog.
+
+Merge the PR. A `chore(knope-demo): release X.Y.Z` PR appears (created by knope's `CreatePullRequest` step); merge it to tag and release. The bump is the biggest of the change files (`major` / `minor` / `patch`) and scoped commits (`fix` / `feat` / `!`), and the version in `knope-demo/include/version.h` is updated by a regex in `knope-demo/knope.toml`. Locally, `knope document-change` (inside `knope-demo/`) writes the change file for you.
 
 ## Files
 
@@ -44,8 +48,9 @@ Two checks run on every PR (`.github/workflows/lint.yml`). Each only looks at it
 
 | Folder | Rule | Tool |
 | --- | --- | --- |
+| everywhere | A Conventional Commit must have a scope, and it must match the folder it touches | cocogitto (`cog verify`) + shell |
 | `release-please-demo/` | Every commit touching it must be a Conventional Commit. We keep merge commits, so every commit lands on `main`. | cocogitto (`cog verify`), a single Rust binary |
-| `knope-demo/` | PR must add a Markdown change file in `.changeset/` (or carry the `skip-changelog` label) | plain shell check |
+| `knope-demo/` | PR needs a release note: a `.changeset/*.md` file **or** a `feat`/`fix` commit scoped to `knope-demo` (escape hatch: `skip-changelog` label) | plain shell check |
 
 Optional local hook, so a bad message never reaches a PR:
 
@@ -54,7 +59,15 @@ brew install cocogitto        # or: cargo binstall cocogitto
 cog install-hook commit-msg   # installs the hook defined in cog.toml
 ```
 
-The hook only checks commits that touch `release-please-demo/`.
+The hook checks commits that touch `release-please-demo/` (format and scope). CI checks the rest.
+
+## Baseline tag for knope
+
+knope reads commits since the last `knope-demo/v*` tag. Before the first knope release, tag the current `main` so older commits aren't counted:
+
+```bash
+git tag knope-demo/v0.0.0 origin/main && git push origin knope-demo/v0.0.0
+```
 
 ## One-time setup
 
