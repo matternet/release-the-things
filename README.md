@@ -38,6 +38,7 @@ Merge the PR. A `chore(knope-demo): release X.Y.Z` PR appears (created by knope'
 
 - `release-please-config.json`, `.release-please-manifest.json`: release-please setup, scoped to `release-please-demo/`
 - `.github/workflows/release-please.yml`: flavour 1
+- `knope-demo/CHANGESETS.md`: how to write a change file (kept outside `.changeset/`, where every `.md` must be a change file)
 - `knope-demo/knope.toml`: knope package, versioned file, and the `prepare-release` / `release` workflows
 - `.github/workflows/knope-release-pr.yml`: runs `knope prepare-release` (opens/updates the release PR)
 - `.github/workflows/knope-release.yml`: runs `knope release` when the release PR is merged
