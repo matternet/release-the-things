@@ -16,9 +16,6 @@ jobs:
       github.event.pull_request.merged == true &&
       github.event.pull_request.head.ref == 'release/knope-demo'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: knope-demo
     steps:
       - name: Get release-bot token
         id: app-token

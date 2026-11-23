@@ -3,7 +3,7 @@
 #     feat(release-please-demo): ...  /  fix(knope-demo): ...
 #     (knope counts unscoped commits for every package, so scopes keep the demos apart)
 #  2. Commits touching release-please-demo/ must be Conventional Commits (checked by cog).
-#  3. PRs touching knope-demo/ need a release note: a .changeset/*.md file OR a
+#  3. PRs touching knope-demo/ need a release note: a .changeset/*.md file (repo root) OR a
 #     feat/fix commit scoped to knope-demo. Escape hatch: the skip-changelog label.
 # We keep merge commits, so every commit lands on main and every commit is checked.
 name: lint
@@ -85,7 +85,7 @@ jobs:
           if ! echo "$files" | grep -q '^knope-demo/'; then
             echo "PR doesn't touch knope-demo/. Nothing to check."; exit 0
           fi
-          if echo "$files" | grep -E '^knope-demo/\.changeset/.+\.md$' | grep -qv '/README\.md$'; then
+          if echo "$files" | grep -qE '^\.changeset/.+\.md$'; then
             echo "Change file found."; exit 0
           fi
           if git log --no-merges --format=%s "$BASE..$HEAD" | grep -qE '^(feat|fix)\(knope-demo\)!?: |^[a-z]+\(knope-demo\)!: '; then

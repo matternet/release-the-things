@@ -1,14 +1,14 @@
-# knope config for the knope-demo flavour (run knope from inside knope-demo/).
+# knope config for the knope-demo flavour. knope runs from the repo root (it needs the git repo here).
 # Two ways to describe a change, both feed the version bump and the changelog:
-#  - Markdown change files: knope-demo/.changeset/*.md
+#  - Markdown change files: .changeset/*.md at the repo root (front matter: knope-demo: patch|minor|major)
 #  - Conventional Commits scoped to this folder: fix(knope-demo): ..., feat(knope-demo): ...
 # Unscoped commits would count for every package, so the lint requires a scope.
 
 [packages.knope-demo]
 versioned_files = [
-  { path = "include/version.h", regex = 'FIRMWARE_VERSION "(?<version>\d+\.\d+\.\d+)"' },
+  { path = "knope-demo/include/version.h", regex = 'FIRMWARE_VERSION "(?<version>\d+\.\d+\.\d+)"' },
 ]
-changelog = "CHANGELOG.md"
+changelog = "knope-demo/CHANGELOG.md"
 scopes = ["knope-demo"]
 
 [github]
