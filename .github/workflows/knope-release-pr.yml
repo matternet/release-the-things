@@ -6,7 +6,7 @@ name: knope release PR
 on:
   push:
     branches: [main]
-    paths: ["knope-demo/**"]
+    paths: ["knope-demo/**", ".changeset/**", "knope.toml"]
   workflow_dispatch:
 
 concurrency:
@@ -22,9 +22,6 @@ jobs:
     # Skip the push that is the release merge (squash or merge commit).
     if: "${{ !startsWith(github.event.head_commit.message, 'chore(knope-demo): release') && !contains(github.event.head_commit.message, 'release/knope-demo') }}"
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: knope-demo
     steps:
       - name: Get release-bot token
         id: app-token
@@ -45,7 +42,7 @@ jobs:
         run: |
           last="$(git describe --tags --match 'knope-demo/v*' --abbrev=0 2>/dev/null || true)"
           range="${last:+$last..}HEAD"
-          if ls .changeset/*.md 2>/dev/null | grep -qv '/README.md$' \
+          if ls .changeset/*.md >/dev/null 2>&1 \
              || git log --format=%s "$range" | grep -qE '^(feat|fix)\(knope-demo\)!?: |^[a-z]+\(knope-demo\)!: '; then
             echo "has_changes=true" >> "$GITHUB_OUTPUT"
           else

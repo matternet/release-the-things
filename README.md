@@ -18,7 +18,7 @@ Each flavour only looks at its own folder, opens its own release PR, writes its 
 
 **release-please flavour:** change something in `release-please-demo/`, commit it as `feat(release-please-demo): add parachute`, and merge the PR. A release PR appears; merge it to tag and release. The version in `release-please-demo/include/version.h` updates on the line marked `x-release-please-version`.
 
-**knope flavour:** change something in `knope-demo/` and add a change file, e.g. `knope-demo/.changeset/add_parachute.md`:
+**knope flavour:** change something in `knope-demo/` and add a change file, e.g. `.changeset/add_parachute.md` (at the repo root):
 
 ```markdown
 ---
@@ -32,14 +32,14 @@ Deploys automatically below 20 m with motors off. Tested in the sim and on the b
 
 Or skip the file and commit as `fix(knope-demo): battery no longer reads 110%`: knope picks up feat/fix commits scoped to `knope-demo` too, and merges both into one changelog.
 
-Merge the PR. A `chore(knope-demo): release X.Y.Z` PR appears (created by knope's `CreatePullRequest` step); merge it to tag and release. The bump is the biggest of the change files (`major` / `minor` / `patch`) and scoped commits (`fix` / `feat` / `!`), and the version in `knope-demo/include/version.h` is updated by a regex in `knope-demo/knope.toml`. Locally, `knope document-change` (inside `knope-demo/`) writes the change file for you.
+Merge the PR. A `chore(knope-demo): release X.Y.Z` PR appears (created by knope's `CreatePullRequest` step); merge it to tag and release. The bump is the biggest of the change files (`major` / `minor` / `patch`) and scoped commits (`fix` / `feat` / `!`), and the version in `knope-demo/include/version.h` is updated by a regex in `knope.toml` (repo root). Locally, `knope document-change` (from the repo root) writes the change file for you.
 
 ## Files
 
 - `release-please-config.json`, `.release-please-manifest.json`: release-please setup, scoped to `release-please-demo/`
 - `.github/workflows/release-please.yml`: flavour 1
 - `knope-demo/CHANGESETS.md`: how to write a change file (kept outside `.changeset/`, where every `.md` must be a change file)
-- `knope-demo/knope.toml`: knope package, versioned file, and the `prepare-release` / `release` workflows
+- `knope.toml` and `.changeset/` (repo root): knope config and change files. knope runs from the root because it needs the git repo there; paths point into `knope-demo/`
 - `.github/workflows/knope-release-pr.yml`: runs `knope prepare-release` (opens/updates the release PR)
 - `.github/workflows/knope-release.yml`: runs `knope release` when the release PR is merged
 
